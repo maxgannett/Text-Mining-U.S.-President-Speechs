@@ -1,0 +1,732 @@
+---
+title: "Text Mining ARM"
+author: "Max Gannett"
+date: "2023-03-01"
+output: html_document
+---
+
+```{r}
+library(tokenizers)
+library(dplyr)
+
+library(jsonlite)
+#library(streamR)
+library(rjson)
+library(tokenizers)
+library(tidyverse)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+#install.packages("syuzhet")  
+## sentiment analysis
+library(syuzhet)
+library(stringr)
+
+
+```
+```{r}
+
+library(arules)
+library(arulesViz)
+
+```
+
+```{r}
+Mydata= read.csv("Transactions.csv")
+
+clean_transactions = "clean_transactions.csv"
+
+# Trans <- file(clean_transactions)
+# tokens <- tokenizers::tokenize_words(Mydata$text[1], stopwords =
+#           stopwords::stopwords("en"), lowercase= TRUE, 
+#           strip_punct= TRUE, strip_numeric =TRUE, simplify = TRUE)
+# cat(unlist(str_squish(tokens)), "\n",file=Trans, sep=",")
+# close(Trans)
+Trans <- file(clean_transactions, open='a')
+for(i in 2:nrow(Mydata)){
+  tokens <- tokenizers::tokenize_words(Mydata$text[i], stopwords =
+          stopwords::stopwords("en"), lowercase= TRUE,
+          strip_punct= TRUE, strip_numeric =TRUE, simplify = TRUE)
+  cat(unlist(str_squish(tokens)), "\n",file=Trans, sep=",")
+}
+close(Trans)
+```
+
+```{r}
+PresTrans <- "clean_transactions.csv"
+PressSpeechTrans <- read.transactions(PresTrans,
+                                      rm.duplicates = FALSE,
+                                      format= "basket",
+                                      sep=",")
+# inspect(PressSpeechTrans)
+Sample_Trans <- sample(PressSpeechTrans, 2)
+summary(Sample_Trans)
+# PresSpeeches_rules = arules::apriori()
+```
+```{r}
+clean_transactions = "clean_transactions.csv"
+pres_df <- read.csv(clean_transactions, header = FALSE, sep = ",")
+# head(pres_df)
+pres_df <- pres_df %>%
+  mutate_all(as.character)
+(str(pres_df))
+
+pres_df[pres_df == "states"] <- ""
+pres_df[pres_df == 'government'] <- ""
+pres_df[pres_df == "american"] <- ""
+pres_df[pres_df == "america"] <- ""
+pres_df[pres_df == "country"] <- ""
+pres_df[pres_df == "americans"] <- ""
+pres_df[pres_df == "united"] <- ""
+pres_df[pres_df == "people"] <- ""
+pres_df[pres_df == "president"] <- ""
+pres_df[pres_df == "congress"] <- ""
+pres_df[pres_df == "national"] <- ""
+pres_df[pres_df == "nations"] <- ""
+pres_df[pres_df == "public"] <- ""
+pres_df[pres_df == "nation"] <- ""
+pres_df[pres_df == "general"] <- ""
+pres_df[pres_df == "expandable"] <- ""
+pres_df[pres_df == "citizens"] <- ""
+pres_df[pres_df == "present"] <- ""
+
+myDF <- NULL
+for (i in 1:ncol(pres_df)){
+  MyList = c()
+  MyList = c(MyList,grepl("[[:digit:]]",pres_df[[i]]))
+  myDF <- cbind(myDF,MyList)
+}
+
+pres_df[myDF] <- ""
+# (pres_df)
+myDF <- NULL
+myDF2 <- NULL
+myDF3 <- NULL
+
+for (i in 1:ncol(pres_df)){
+  MyList = c()
+  MyList = c(MyList,grepl("[[:digit:]]",pres_df[[i]]))
+  
+  MyList2 = c()
+  MyList2 = c(MyList2,grepl("[A-z]{4,}",pres_df[[i]]))
+  
+  MyList3 = c()
+  MyList3 = c(MyList3,grepl("[A-z]{12,}",pres_df[[i]]))
+  
+  myDF <- cbind(myDF,MyList)
+  myDF2 <- cbind(myDF2,MyList2)
+  myDF3 <- cbind(myDF3,MyList3)
+}
+pres_df[myDF] <- ""
+pres_df[!myDF2] <- ""
+pres_df[myDF3] <- ""
+(head(pres_df,10))
+```
+```{r}
+# small_sample <- pres_df[1:100]
+write.csv(pres_df, "small_clean.csv")
+```
+
+
+```{r}
+
+
+PresSpeechTrans <- read.transactions("small_clean.csv",
+                                      rm.duplicates = FALSE,
+                                      format= "basket",
+                                      sep=",")
+
+pres_rules = arules::apriori(PresSpeechTrans,
+                             parameter = list(support= .1,       confidence = .002, minlen =2, maxlen=3))
+
+SortedRules_sup <- sort(pres_rules, by="support",decreasing=TRUE)
+inspect(SortedRules_sup[1:25])
+Con_Rules_sup <- sort(pres_rules, by="confidence",decreasing=TRUE)
+inspect(Con_Rules_sup[1:25])
+```
+```{r}
+library(arulesViz)
+# library(tcltk2)
+# plot (SortedRules_sup[1:25],method="graph",engine='interactive',shading='confidence')
+plot <- plot(SortedRules_sup, method="graph", engine="htmlwidget")
+
+htmltools::save_html(plot, file = "ALL_support.html")
+```
+```{r}
+plot <- plot(Con_Rules_sup, method="graph", engine="htmlwidget")
+htmltools::save_html(plot, file = "ALL_confidence.html")
+```
+Federalist ARM
+
+
+```{r}
+My_fed_data= read.csv("Federalist_Transactions.csv")
+
+clean_fed_transactions = "clean_fed_transactions.csv"
+
+# Trans <- file(clean_transactions)
+# tokens <- tokenizers::tokenize_words(Mydata$text[1], stopwords =
+#           stopwords::stopwords("en"), lowercase= TRUE, 
+#           strip_punct= TRUE, strip_numeric =TRUE, simplify = TRUE)
+# cat(unlist(str_squish(tokens)), "\n",file=Trans, sep=",")
+# close(Trans)
+Trans <- file(clean_fed_transactions, open='a')
+for(i in 2:nrow(My_fed_data)){
+  
+  tokens <- tokenizers::tokenize_words(My_fed_data$text[i],  stopwords =
+          stopwords::stopwords("en"), lowercase= TRUE,
+          strip_punct= TRUE, strip_numeric =TRUE, simplify = TRUE)
+  cat(unlist(str_squish(tokens)), "\n",file=Trans, sep=",")
+}
+close(Trans)
+```
+
+```{r}
+clean_fed_transactions = "clean_fed_transactions.csv"
+pres_fed_df <- read.csv(clean_fed_transactions, header = FALSE, sep = ",")
+# head(pres_df)
+pres_fed_df <- pres_fed_df %>%
+  mutate_all(as.character)
+(str(pres_fed_df))
+
+pres_fed_df[pres_fed_df == "states"] <- ""
+pres_fed_df[pres_fed_df == 'government'] <- ""
+pres_fed_df[pres_fed_df == "american"] <- ""
+pres_fed_df[pres_fed_df == "america"] <- ""
+pres_fed_df[pres_fed_df == "country"] <- ""
+pres_fed_df[pres_fed_df == "americans"] <- ""
+pres_fed_df[pres_fed_df == "united"] <- ""
+pres_fed_df[pres_fed_df == "people"] <- ""
+pres_fed_df[pres_fed_df == "president"] <- ""
+pres_fed_df[pres_fed_df == "congress"] <- ""
+pres_fed_df[pres_fed_df == "national"] <- ""
+pres_fed_df[pres_fed_df == "nations"] <- ""
+pres_fed_df[pres_fed_df == "public"] <- ""
+pres_fed_df[pres_fed_df == "nation"] <- ""
+pres_fed_df[pres_fed_df == "general"] <- ""
+pres_fed_df[pres_fed_df == "expandable"] <- ""
+pres_fed_df[pres_fed_df == "citizens"] <- ""
+pres_fed_df[pres_fed_df == "present"] <- ""
+
+
+# (pres_df)
+myDF <- NULL
+myDF2 <- NULL
+myDF3 <- NULL
+
+for (i in 1:ncol(pres_fed_df)){
+  MyList = c()
+  MyList = c(MyList,grepl("[[:digit:]]",pres_fed_df[[i]]))
+  
+  MyList2 = c()
+  MyList2 = c(MyList2,grepl("[A-z]{4,}",pres_fed_df[[i]]))
+  
+  MyList3 = c()
+  MyList3 = c(MyList3,grepl("[A-z]{12,}",pres_fed_df[[i]]))
+  
+  myDF <- cbind(myDF,MyList)
+  myDF2 <- cbind(myDF2,MyList2)
+  myDF3 <- cbind(myDF3,MyList3)
+}
+pres_fed_df[myDF] <- ""
+pres_fed_df[!myDF2] <- ""
+pres_fed_df[myDF3] <- ""
+(head(pres_fed_df,10))
+```
+
+```{r}
+# small_sample <- pres_df[1:50]
+write.csv(pres_fed_df, "fed_clean.csv")
+```
+
+```{r}
+
+
+PresSpeechTrans <- read.transactions("fed_clean.csv",
+                                      rm.duplicates = FALSE,
+                                      format= "basket",
+                                      sep=",")
+
+pres_rules = arules::apriori(PresSpeechTrans,
+                             parameter = list(support= .1,       confidence = .002, minlen =2, maxlen=3))
+
+# inspect(pres_rules[1:30])
+SortedRules_sup <- sort(pres_rules, by="support",decreasing=TRUE)
+inspect(SortedRules_sup[1:25])
+Con_Rules_sup <- sort(pres_rules, by="confidence",decreasing=TRUE)
+inspect(Con_Rules_sup[1:25])
+```
+
+
+```{r}
+library(arulesViz)
+# library(tcltk2)
+# plot (SortedRules_sup[1:25],method="graph",engine='interactive',shading='confidence')
+plot <- plot(SortedRules_sup, method="graph", engine="htmlwidget")
+htmltools::save_html(plot, file = "fed_support.html")
+```
+
+
+```{r}
+plot <- plot(Con_Rules_sup, method="graph", engine="htmlwidget")
+htmltools::save_html(plot, file = "fed_confidence.html")
+```
+
+Democratic Republican 
+
+```{r}
+My_dr_data= read.csv("Democratic-Republican_Transactions.csv")
+
+clean_dr_transactions = "clean_dr_transactions.csv"
+
+# Trans <- file(clean_transactions)
+# tokens <- tokenizers::tokenize_words(Mydata$text[1], stopwords =
+#           stopwords::stopwords("en"), lowercase= TRUE, 
+#           strip_punct= TRUE, strip_numeric =TRUE, simplify = TRUE)
+# cat(unlist(str_squish(tokens)), "\n",file=Trans, sep=",")
+# close(Trans)
+Trans <- file(clean_dr_transactions, open='a')
+for(i in 2:nrow(My_dr_data)){
+  
+  tokens <- tokenizers::tokenize_words(My_dr_data$text[i],  stopwords =
+          stopwords::stopwords("en"), lowercase= TRUE,
+          strip_punct= TRUE, strip_numeric =TRUE, simplify = TRUE)
+  cat(unlist(str_squish(tokens)), "\n",file=Trans, sep=",")
+}
+close(Trans)
+```
+
+```{r}
+clean_dr_transactions = "clean_dr_transactions.csv"
+pres_dr_df <- read.csv(clean_dr_transactions, header = FALSE, sep = ",")
+# head(pres_df)
+pres_dr_df <- pres_dr_df %>%
+  mutate_all(as.character)
+(str(pres_dr_df))
+
+pres_dr_df[pres_dr_df == "states"] <- ""
+pres_dr_df[pres_dr_df == 'government'] <- ""
+pres_dr_df[pres_dr_df == "american"] <- ""
+pres_dr_df[pres_dr_df == "america"] <- ""
+pres_dr_df[pres_dr_df == "country"] <- ""
+pres_dr_df[pres_dr_df == "americans"] <- ""
+pres_dr_df[pres_dr_df == "united"] <- ""
+pres_dr_df[pres_dr_df == "people"] <- ""
+pres_dr_df[pres_dr_df == "president"] <- ""
+pres_dr_df[pres_dr_df == "congress"] <- ""
+pres_dr_df[pres_dr_df == "national"] <- ""
+pres_dr_df[pres_dr_df == "nations"] <- ""
+pres_dr_df[pres_dr_df == "public"] <- ""
+pres_dr_df[pres_dr_df == "nation"] <- ""
+pres_dr_df[pres_dr_df == "general"] <- ""
+pres_dr_df[pres_dr_df == "expandable"] <- ""
+pres_dr_df[pres_dr_df == "citizens"] <- ""
+pres_dr_df[pres_dr_df == "present"] <- ""
+
+
+# (pres_df)
+myDF <- NULL
+myDF2 <- NULL
+myDF3 <- NULL
+
+for (i in 1:ncol(pres_dr_df)){
+  MyList = c()
+  MyList = c(MyList,grepl("[[:digit:]]",pres_dr_df[[i]]))
+  
+  MyList2 = c()
+  MyList2 = c(MyList2,grepl("[A-z]{4,}",pres_dr_df[[i]]))
+  
+  MyList3 = c()
+  MyList3 = c(MyList3,grepl("[A-z]{12,}",pres_dr_df[[i]]))
+  
+  myDF <- cbind(myDF,MyList)
+  myDF2 <- cbind(myDF2,MyList2)
+  myDF3 <- cbind(myDF3,MyList3)
+}
+
+pres_dr_df[myDF] <- ""
+pres_dr_df[!myDF2] <- ""
+pres_dr_df[myDF3] <- ""
+(head(pres_dr_df,10))
+```
+```{r}
+small_dr_sample <- pres_dr_df[1:50]
+write.csv(pres_dr_df, "dr_clean.csv")
+```
+
+```{r}
+
+
+PresSpeechTrans <- read.transactions("dr_clean.csv",
+                                      rm.duplicates = FALSE,
+                                      format= "basket",
+                                      sep=",")
+
+pres_rules = arules::apriori(PresSpeechTrans,
+                             parameter = list(support= .1,       confidence = .002, minlen =2, maxlen=3))
+
+# inspect(pres_rules[1:30])
+SortedRules_sup <- sort(pres_rules, by="support",decreasing=TRUE)
+inspect(SortedRules_sup[1:25])
+Con_Rules_sup <- sort(pres_rules, by="confidence",decreasing=TRUE)
+inspect(Con_Rules_sup[1:25])
+```
+```{r}
+library(arulesViz)
+# library(tcltk2)
+# plot (SortedRules_sup[1:25],method="graph",engine='interactive',shading='confidence')
+plot <- plot(SortedRules_sup, method="graph", engine="htmlwidget")
+htmltools::save_html(plot, file = "dr_support.html")
+```
+```{r}
+plot <- plot(Con_Rules_sup, method="graph", engine="htmlwidget")
+htmltools::save_html(plot, file = "dr_confidence.html")
+```
+
+
+Democrat data
+
+```{r}
+My_dem_data= read.csv("Democrat_Transactions.csv")
+
+clean_dem_transactions = "clean_dem_transactions.csv"
+
+# Trans <- file(clean_transactions)
+# tokens <- tokenizers::tokenize_words(Mydata$text[1], stopwords =
+#           stopwords::stopwords("en"), lowercase= TRUE, 
+#           strip_punct= TRUE, strip_numeric =TRUE, simplify = TRUE)
+# cat(unlist(str_squish(tokens)), "\n",file=Trans, sep=",")
+# close(Trans)
+Trans <- file(clean_dem_transactions, open='a')
+for(i in 2:nrow(My_dem_data)){
+  
+  tokens <- tokenizers::tokenize_words(My_dem_data$text[i],  stopwords =
+          stopwords::stopwords("en"), lowercase= TRUE,
+          strip_punct= TRUE, strip_numeric =TRUE, simplify = TRUE)
+  cat(unlist(str_squish(tokens)), "\n",file=Trans, sep=",")
+}
+close(Trans)
+```
+
+```{r}
+clean_dem_transactions = "clean_dem_transactions.csv"
+pres_dem_df <- read.csv(clean_dem_transactions, header = FALSE, sep = ",")
+# head(pres_df)
+pres_dem_df <- pres_dem_df %>%
+  mutate_all(as.character)
+(str(pres_dem_df))
+
+pres_dem_df[pres_dem_df == "states"] <- ""
+pres_dem_df[pres_dem_df == 'government'] <- ""
+pres_dem_df[pres_dem_df == "american"] <- ""
+pres_dem_df[pres_dem_df == "america"] <- ""
+pres_dem_df[pres_dem_df == "country"] <- ""
+pres_dem_df[pres_dem_df == "americans"] <- ""
+pres_dem_df[pres_dem_df == "united"] <- ""
+pres_dem_df[pres_dem_df == "people"] <- ""
+pres_dem_df[pres_dem_df == "president"] <- ""
+pres_dem_df[pres_dem_df == "congress"] <- ""
+pres_dem_df[pres_dem_df == "national"] <- ""
+pres_dem_df[pres_dem_df == "nations"] <- ""
+pres_dem_df[pres_dem_df == "public"] <- ""
+pres_dem_df[pres_dem_df == "nation"] <- ""
+pres_dem_df[pres_dem_df == "general"] <- ""
+pres_dem_df[pres_dem_df == "expandable"] <- ""
+pres_dem_df[pres_dem_df == "citizens"] <- ""
+pres_dem_df[pres_dem_df == "present"] <- ""
+
+
+# (pres_df)
+myDF <- NULL
+myDF2 <- NULL
+myDF3 <- NULL
+
+for (i in 1:ncol(pres_dem_df)){
+  MyList = c()
+  MyList = c(MyList,grepl("[[:digit:]]",pres_dem_df[[i]]))
+  
+  MyList2 = c()
+  MyList2 = c(MyList2,grepl("[A-z]{4,}",pres_dem_df[[i]]))
+  
+  MyList3 = c()
+  MyList3 = c(MyList3,grepl("[A-z]{12,}",pres_dem_df[[i]]))
+  
+  myDF <- cbind(myDF,MyList)
+  myDF2 <- cbind(myDF2,MyList2)
+  myDF3 <- cbind(myDF3,MyList3)
+}
+
+pres_dem_df[myDF] <- ""
+pres_dem_df[!myDF2] <- ""
+pres_dem_df[myDF3] <- ""
+(head(pres_dem_df,10))
+```
+
+```{r}
+# small_dr_sample <- pres_dr_df[1:50]
+write.csv(pres_dem_df, "dem_clean.csv")
+```
+
+```{r}
+
+
+PresSpeechTrans <- read.transactions("dem_clean.csv",
+                                      rm.duplicates = FALSE,
+                                      format= "basket",
+                                      sep=",")
+
+pres_rules = arules::apriori(PresSpeechTrans,
+                             parameter = list(support= .1,       confidence = .002, minlen =2, maxlen=3))
+
+# inspect(pres_rules[1:30])
+SortedRules_sup <- sort(pres_rules, by="support",decreasing=TRUE)
+inspect(SortedRules_sup[1:25])
+Con_Rules_sup <- sort(pres_rules, by="confidence",decreasing=TRUE)
+inspect(Con_Rules_sup[1:25])
+```
+
+```{r}
+library(arulesViz)
+# library(tcltk2)
+# plot (SortedRules_sup[1:25],method="graph",engine='interactive',shading='confidence')
+plot <- plot(SortedRules_sup, method="graph", engine="htmlwidget")
+
+htmltools::save_html(plot, file = "dem_support.html")
+# htmltools::save_html(plot, file = "sunburst.html")
+```
+
+```{r}
+plot <- plot(Con_Rules_sup, method="graph", engine="htmlwidget")
+htmltools::save_html(plot, file = "dem_confidence.html")
+```
+
+Whig
+
+```{r}
+My_whig_data= read.csv("whig_Transactions.csv")
+
+clean_whig_transactions = "clean_whig_transactions.csv"
+
+# Trans <- file(clean_transactions)
+# tokens <- tokenizers::tokenize_words(Mydata$text[1], stopwords =
+#           stopwords::stopwords("en"), lowercase= TRUE, 
+#           strip_punct= TRUE, strip_numeric =TRUE, simplify = TRUE)
+# cat(unlist(str_squish(tokens)), "\n",file=Trans, sep=",")
+# close(Trans)
+Trans <- file(clean_whig_transactions, open='a')
+for(i in 2:nrow(My_whig_data)){
+  
+  tokens <- tokenizers::tokenize_words(My_whig_data$text[i],  stopwords =
+          stopwords::stopwords("en"), lowercase= TRUE,
+          strip_punct= TRUE, strip_numeric =TRUE, simplify = TRUE)
+  cat(unlist(str_squish(tokens)), "\n",file=Trans, sep=",")
+}
+close(Trans)
+```
+
+```{r}
+clean_whig_transactions = "clean_whig_transactions.csv"
+pres_whig_df <- read.csv(clean_whig_transactions, header = FALSE, sep = ",")
+# head(pres_df)
+pres_whig_df <- pres_whig_df %>%
+  mutate_all(as.character)
+(str(pres_whig_df))
+
+pres_whig_df[pres_whig_df == "states"] <- ""
+pres_whig_df[pres_whig_df == 'government'] <- ""
+pres_whig_df[pres_whig_df == "american"] <- ""
+pres_whig_df[pres_whig_df == "america"] <- ""
+pres_whig_df[pres_whig_df == "country"] <- ""
+pres_whig_df[pres_whig_df == "americans"] <- ""
+pres_whig_df[pres_whig_df == "united"] <- ""
+pres_whig_df[pres_whig_df == "people"] <- ""
+pres_whig_df[pres_whig_df == "president"] <- ""
+pres_whig_df[pres_whig_df == "congress"] <- ""
+pres_whig_df[pres_whig_df == "national"] <- ""
+pres_whig_df[pres_whig_df == "nations"] <- ""
+pres_whig_df[pres_whig_df == "public"] <- ""
+pres_whig_df[pres_whig_df == "nation"] <- ""
+pres_whig_df[pres_whig_df == "general"] <- ""
+pres_whig_df[pres_whig_df == "expandable"] <- ""
+pres_whig_df[pres_whig_df == "citizens"] <- ""
+pres_whig_df[pres_whig_df == "present"] <- ""
+
+
+# (pres_df)
+myDF <- NULL
+myDF2 <- NULL
+myDF3 <- NULL
+
+for (i in 1:ncol(pres_whig_df)){
+  MyList = c()
+  MyList = c(MyList,grepl("[[:digit:]]",pres_whig_df[[i]]))
+  
+  MyList2 = c()
+  MyList2 = c(MyList2,grepl("[A-z]{4,}",pres_whig_df[[i]]))
+  
+  MyList3 = c()
+  MyList3 = c(MyList3,grepl("[A-z]{12,}",pres_whig_df[[i]]))
+  
+  myDF <- cbind(myDF,MyList)
+  myDF2 <- cbind(myDF2,MyList2)
+  myDF3 <- cbind(myDF3,MyList3)
+}
+
+pres_whig_df[myDF] <- ""
+pres_whig_df[!myDF2] <- ""
+pres_whig_df[myDF3] <- ""
+(head(pres_whig_df,10))
+```
+
+```{r}
+# small_dr_sample <- pres_dr_df[1:50]
+write.csv(pres_whig_df, "whig_clean.csv")
+```
+
+```{r}
+
+
+PresSpeechTrans <- read.transactions("whig_clean.csv",
+                                      rm.duplicates = FALSE,
+                                      format= "basket",
+                                      sep=",")
+
+pres_rules = arules::apriori(PresSpeechTrans,
+                             parameter = list(support= .1,       confidence = .002, minlen =2, maxlen=3))
+
+# inspect(pres_rules[1:30])
+SortedRules_sup <- sort(pres_rules, by="support",decreasing=TRUE)
+inspect(SortedRules_sup[1:25])
+Con_Rules_sup <- sort(pres_rules, by="confidence",decreasing=TRUE)
+inspect(Con_Rules_sup[1:25])
+```
+
+```{r}
+library(arulesViz)
+# library(tcltk2)
+# plot (SortedRules_sup[1:25],method="graph",engine='interactive',shading='confidence')
+plot(SortedRules_sup, method="graph", engine="htmlwidget")
+
+# htmltools::save_html(plot, file = "sunburst.html")
+htmltools::save_html(plot, file = "whig_support.html")
+```
+
+```{r}
+plot(Con_Rules_sup, method="graph", engine="htmlwidget")
+htmltools::save_html(plot, file = "whig_confidence.html")
+```
+
+
+Republicans 
+
+```{r}
+My_rep_data= read.csv("Republican_Transactions.csv")
+
+clean_rep_transactions = "clean_rep_transactions.csv"
+
+# Trans <- file(clean_transactions)
+# tokens <- tokenizers::tokenize_words(Mydata$text[1], stopwords =
+#           stopwords::stopwords("en"), lowercase= TRUE, 
+#           strip_punct= TRUE, strip_numeric =TRUE, simplify = TRUE)
+# cat(unlist(str_squish(tokens)), "\n",file=Trans, sep=",")
+# close(Trans)
+Trans <- file(clean_rep_transactions, open='a')
+for(i in 2:nrow(My_rep_data)){
+  
+  tokens <- tokenizers::tokenize_words(My_rep_data$text[i],  stopwords =
+          stopwords::stopwords("en"), lowercase= TRUE,
+          strip_punct= TRUE, strip_numeric =TRUE, simplify = TRUE)
+  cat(unlist(str_squish(tokens)), "\n",file=Trans, sep=",")
+}
+close(Trans)
+```
+
+```{r}
+clean_rep_transactions = "clean_rep_transactions.csv"
+pres_rep_df <- read.csv(clean_rep_transactions, header = FALSE, sep = ",")
+# head(pres_df)
+pres_rep_df <- pres_rep_df %>%
+  mutate_all(as.character)
+(str(pres_rep_df))
+
+pres_rep_df[pres_rep_df == "states"] <- ""
+pres_rep_df[pres_rep_df == 'government'] <- ""
+pres_rep_df[pres_rep_df == "american"] <- ""
+pres_rep_df[pres_rep_df == "america"] <- ""
+pres_rep_df[pres_rep_df == "country"] <- ""
+pres_rep_df[pres_rep_df == "americans"] <- ""
+pres_rep_df[pres_rep_df == "united"] <- ""
+pres_rep_df[pres_rep_df == "people"] <- ""
+pres_rep_df[pres_rep_df == "president"] <- ""
+pres_rep_df[pres_rep_df == "congress"] <- ""
+pres_rep_df[pres_rep_df == "national"] <- ""
+pres_rep_df[pres_rep_df == "nations"] <- ""
+pres_rep_df[pres_rep_df == "public"] <- ""
+pres_rep_df[pres_rep_df == "nation"] <- ""
+pres_rep_df[pres_rep_df == "general"] <- ""
+pres_rep_df[pres_rep_df == "expandable"] <- ""
+pres_rep_df[pres_rep_df == "citizens"] <- ""
+pres_rep_df[pres_rep_df == "present"] <- ""
+
+
+# (pres_df)
+myDF <- NULL
+myDF2 <- NULL
+myDF3 <- NULL
+
+for (i in 1:ncol(pres_rep_df)){
+  MyList = c()
+  MyList = c(MyList,grepl("[[:digit:]]",pres_rep_df[[i]]))
+  
+  MyList2 = c()
+  MyList2 = c(MyList2,grepl("[A-z]{4,}",pres_rep_df[[i]]))
+  
+  MyList3 = c()
+  MyList3 = c(MyList3,grepl("[A-z]{12,}",pres_rep_df[[i]]))
+  
+  myDF <- cbind(myDF,MyList)
+  myDF2 <- cbind(myDF2,MyList2)
+  myDF3 <- cbind(myDF3,MyList3)
+}
+
+pres_rep_df[myDF] <- ""
+pres_rep_df[!myDF2] <- ""
+pres_rep_df[myDF3] <- ""
+(head(pres_rep_df,10))
+```
+
+```{r}
+# small_dr_sample <- pres_dr_df[1:50]
+write.csv(pres_rep_df, "rep_clean.csv")
+```
+
+```{r}
+
+
+PresSpeechTrans <- read.transactions("rep_clean.csv",
+                                      rm.duplicates = FALSE,
+                                      format= "basket",
+                                      sep=",")
+
+pres_rules = arules::apriori(PresSpeechTrans,
+                             parameter = list(support= .1,       confidence = .002, minlen =2, maxlen=3))
+
+# inspect(pres_rules[1:30])
+SortedRules_sup <- sort(pres_rules, by="support",decreasing=TRUE)
+inspect(SortedRules_sup[1:25])
+Con_Rules_sup <- sort(pres_rules, by="confidence",decreasing=TRUE)
+inspect(Con_Rules_sup[1:25])
+```
+
+```{r}
+library(arulesViz)
+# library(tcltk2)
+# plot (SortedRules_sup[1:25],method="graph",engine='interactive',shading='confidence')
+plot <- plot(SortedRules_sup, method="graph", engine="htmlwidget")
+
+htmltools::save_html(plot, file = "republican_support.html")
+```
+```{r}
+plot(Con_Rules_sup, method="graph", engine="htmlwidget")
+htmltools::save_html(plot, file = "republican_confidence.html")
+```
